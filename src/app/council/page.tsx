@@ -68,7 +68,7 @@ export default function CouncilPage() {
       </div>
 
       {/* Agent cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
         {AGENTS.map((agent) => (
           <div key={agent.key} className="glass p-4">
             <div className="flex items-center gap-3 mb-2">
@@ -92,7 +92,7 @@ export default function CouncilPage() {
           <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${getBiasClass(bias)}`}>{bias}</span>
         </div>
 
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { label: "Entry", value: snap?.entry || "—", color: "var(--gold)" },
             { label: "SL", value: snap?.sl || "—", color: "var(--red)" },

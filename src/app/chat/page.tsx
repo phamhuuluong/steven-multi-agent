@@ -80,7 +80,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)]">
+    <div className="flex flex-col h-[calc(100dvh-130px)] md:h-[calc(100vh-80px)]">
       {/* Header */}
       <div className="mb-4 flex-shrink-0">
         <h1 className="text-2xl font-bold gradient-text">Agentic Chat</h1>

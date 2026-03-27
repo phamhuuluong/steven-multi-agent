@@ -202,3 +202,19 @@ body {
   white-space: nowrap;
   z-index: 100;
 }
+
+/* ===== MOBILE RESPONSIVE ===== */
+/* Chat page height on mobile */
+@media (max-width: 768px) {
+  .chat-mobile-height {
+    height: calc(100dvh - 130px);
+  }
+  /* Smaller text in badges on mobile */
+  .badge-buy, .badge-sell, .badge-wait {
+    font-size: 11px;
+  }
+  /* Glass cards - reduce padding on mobile */
+  .glass { border-radius: 12px; }
+  /* Price font smaller on mobile */
+  .price-large { font-size: 1.4rem !important; }
+}

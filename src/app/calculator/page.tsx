@@ -18,7 +18,7 @@ export default function CalculatorPage() {
   const rr = slPts > 0 ? ((slPts * 1.5) / slPts).toFixed(1) : "—";
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="mx-auto w-full max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold gradient-text">Risk Guard</h1>
         <p className="text-sm mt-1" style={{ color: "var(--text-dim)" }}>

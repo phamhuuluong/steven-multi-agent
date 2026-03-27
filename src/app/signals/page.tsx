@@ -34,7 +34,7 @@ export default function SignalsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: "Tổng signal", value: history.length, color: "var(--text-primary)" },
           { label: "Win Rate", value: `${winRate}%`, color: "var(--green)" },

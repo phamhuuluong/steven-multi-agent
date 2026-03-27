@@ -97,7 +97,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Price tickers */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
         <LiveTicker symbol="XAUUSD" price={entry !== "—" ? String(entry) : "4,442.0"} change={0.3} />
         <LiveTicker symbol="DXY" price="104.2" change={-0.1} />
         <LiveTicker symbol="BTC/USD" price="87,240" change={1.2} />
@@ -132,7 +132,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Entry / SL / TP */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-6">
               {[
                 { label: "Entry", value: entry, color: "var(--gold)" },
                 { label: "Stop Loss", value: sl, color: "var(--red)" },
@@ -170,7 +170,7 @@ export default function DashboardPage() {
         <h2 className="text-sm font-semibold mb-3" style={{ color: "var(--text-dim)" }}>
           21 AGENTIC DESIGN PATTERNS ĐƯỢC TÍCH HỢP
         </h2>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {[
             { n: 1, name: "Prompt Chaining", desc: "Signal pipeline", active: true },
             { n: 2, name: "Routing", desc: "Intent detection", active: true },
