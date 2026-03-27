@@ -42,7 +42,7 @@ export default function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch(`${HUB}/api/hub-snapshot`, { cache: "no-store" }).then(r => r.json())
+    fetch(`${HUB}/orderflow/snapshot`, { cache: "no-store" }).then(r => r.json())
       .then(d => setCurrentPrice(d?.entry || "4,442")).catch(() => {});
   }, []);
 
@@ -64,7 +64,7 @@ export default function ChatPage() {
 
     try {
       const [snapR, ctxR] = await Promise.all([
-        fetch(`${HUB}/api/hub-snapshot`, { cache: "no-store" }),
+        fetch(`${HUB}/orderflow/snapshot`, { cache: "no-store" }),
         fetch(`${HUB}/api/market-context`, { cache: "no-store" }),
       ]);
       const snap = snapR.ok ? await snapR.json() : {};

@@ -26,8 +26,8 @@ export default function CouncilPage() {
     setLoading(true);
     try {
       const [sr, hr] = await Promise.all([
-        fetch(`${HUB}/api/hub-snapshot`, { cache: "no-store" }),
-        fetch(`${HUB}/api/council-history`, { cache: "no-store" }),
+        fetch(`${HUB}/orderflow/snapshot`, { cache: "no-store" }),
+        fetch(`${HUB}/api/council_history`, { cache: "no-store" }),
       ]);
       if (sr.ok) setSnap(await sr.json());
       if (hr.ok) setHistory((await hr.json()).slice(0, 10));

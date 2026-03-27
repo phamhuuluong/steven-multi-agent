@@ -42,7 +42,7 @@ export default function DashboardPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const r = await fetch(`${HUB}/api/hub-snapshot`, { cache: "no-store" });
+      const r = await fetch(`${HUB}/orderflow/snapshot`, { cache: "no-store" });
       if (r.ok) {
         const d = await r.json();
         setSnap(d);

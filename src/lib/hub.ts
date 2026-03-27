@@ -1,8 +1,13 @@
 const HUB = process.env.NEXT_PUBLIC_HUB_URL || "https://hub.lomofx.com";
 
+// Verified working endpoints from hub.lomofx.com:
+// /orderflow/snapshot → {current_price, overall_bias, entry, sl, tp, confidence, ...}
+// /api/council_history → [{...signal...}, ...]
+// /api/market-context → {context: "OHLCV DATA..."}
+
 export async function fetchSnapshot() {
   try {
-    const r = await fetch(`${HUB}/api/hub-snapshot`, { next: { revalidate: 30 }, cache: "no-store" });
+    const r = await fetch(`${HUB}/orderflow/snapshot`, { cache: "no-store" });
     if (!r.ok) return null;
     return r.json();
   } catch { return null; }
@@ -10,7 +15,7 @@ export async function fetchSnapshot() {
 
 export async function fetchCouncilHistory() {
   try {
-    const r = await fetch(`${HUB}/api/council-history`, { cache: "no-store" });
+    const r = await fetch(`${HUB}/api/council_history`, { cache: "no-store" });
     if (!r.ok) return [];
     return r.json();
   } catch { return []; }
@@ -19,14 +24,6 @@ export async function fetchCouncilHistory() {
 export async function fetchMarketContext() {
   try {
     const r = await fetch(`${HUB}/api/market-context`, { cache: "no-store" });
-    if (!r.ok) return null;
-    return r.json();
-  } catch { return null; }
-}
-
-export async function fetchSignalResult() {
-  try {
-    const r = await fetch(`${HUB}/api/signal-result`, { cache: "no-store" });
     if (!r.ok) return null;
     return r.json();
   } catch { return null; }

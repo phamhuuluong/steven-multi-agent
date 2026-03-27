@@ -15,7 +15,7 @@ export default function SignalsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${HUB}/api/council-history`, { cache: "no-store" })
+    fetch(`${HUB}/api/council_history`, { cache: "no-store" })
       .then(r => r.json()).then(d => { setHistory(d || []); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
