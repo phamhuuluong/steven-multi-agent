@@ -6,8 +6,10 @@ import { useState } from "react";
 const nav = [
   { href: "/", icon: "📊", label: "Dashboard", pattern: "Live Data" },
   { href: "/charts", icon: "📉", label: "Charts", pattern: "TradingView + Bookmap" },
+  { href: "/scanner", icon: "🔍", label: "Scanner", pattern: "Đa khung · Tương quan" },
   { href: "/council", icon: "🏛️", label: "AI Council", pattern: "Multi-Agent" },
   { href: "/chat", icon: "💬", label: "Chat", pattern: "Routing + RAG" },
+  { href: "/news", icon: "📰", label: "Tin Tức", pattern: "24h · Lịch KT" },
   { href: "/calculator", icon: "🛡️", label: "Risk", pattern: "Guardrails" },
   { href: "/signals", icon: "📈", label: "Signals", pattern: "Evaluation" },
 ];
