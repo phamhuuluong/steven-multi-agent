@@ -20,7 +20,6 @@ export default function CouncilPage() {
   const [snap, setSnap] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [triggering, setTriggering] = useState(false);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -44,10 +43,11 @@ export default function CouncilPage() {
   // Parse debate into lines per agent
   const debateLines = debate
     ? debate.split(/(?=\[)/).filter(Boolean).map((line: string, i: number) => {
-        const match = line.match(/\[([^\]]+)\](.*)/s);
-        const agentName = match?.[1]?.trim().toLowerCase().replace(/\s+/g, "_") || "";
+        const bracketEnd = line.indexOf("]");
+        const agentName = bracketEnd > 1 ? line.slice(1, bracketEnd).toLowerCase().replace(/\s+/g, "_") : "";
+        const text = bracketEnd > 0 ? line.slice(bracketEnd + 1).trim() : line.trim();
         const agent = AGENTS.find(a => agentName.includes(a.key.replace("_", ""))) || AGENTS[i % AGENTS.length];
-        return { agent, text: match?.[2]?.trim() || line.trim(), index: i };
+        return { agent, text, index: i };
       })
     : [];
 
