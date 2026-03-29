@@ -5,10 +5,11 @@ const HUB = process.env.NEXT_PUBLIC_HUB_URL || "https://hub.lomofx.com";
 
 type BtcData = {
   price: number; change_1h: number; change_24h: number; bias: string;
-  vp: { "1h": { poc: number; vah: number; val: number }; "4h": { poc: number; vah: number; val: number } };
-  ob: { bullish_1h: number[]; bearish_1h: number[]; bullish_4h: number[]; bearish_4h: number[] };
-  fvg: { up_1h: number[][]; down_1h: number[][]; up_4h: number[][]; down_4h: number[][] };
-  sweeps: { type: string; level: number; close: number }[];
+  vp: { "m15": { poc: number; vah: number; val: number }; "1h": { poc: number; vah: number; val: number }; "4h": { poc: number; vah: number; val: number } };
+  ob: { bullish_m15: number[]; bearish_m15: number[]; bullish_1h: number[]; bearish_1h: number[]; bullish_4h: number[]; bearish_4h: number[] };
+  fvg: { up_m15: number[][]; down_m15: number[][]; up_1h: number[][]; down_1h: number[][]; up_4h: number[][]; down_4h: number[][] };
+  sweeps_m15: { type: string; level: number; close: number }[];
+  sweeps_1h: { type: string; level: number; close: number }[];
   wyckoff_phase: string; cvd: number; cvd_divergence: boolean; cvd_divergence_type: string;
   long_ratio: number; short_ratio: number; open_interest: number; oi_change_24h_pct: number;
   l2_bid_walls: { price: number; qty_usd: number }[]; l2_ask_walls: { price: number; qty_usd: number }[];
@@ -169,7 +170,7 @@ export default function BtcPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="glass p-4">
           <div className="text-xs font-semibold mb-3" style={{ color: "var(--gold)" }}>📊 VOLUME PROFILE</div>
-          {(["1h", "4h"] as const).map(tf => (
+          {(["m15", "1h", "4h"] as const).map(tf => (
             <div key={tf} className="mb-3">
               <div className="text-xs font-semibold mb-1 uppercase" style={{ color: "var(--text-dim)" }}>{tf}</div>
               <div className="flex flex-wrap gap-2">
@@ -264,6 +265,20 @@ export default function BtcPage() {
           <div>
             <div className="text-xs font-semibold mb-2" style={{ color: "var(--text-dim)" }}>ORDER BLOCKS</div>
             <div className="space-y-1.5">
+              {data.ob.bullish_m15?.map((p, i) => (
+                <div key={`bull-m15-${i}`} className="flex items-center gap-2 text-xs">
+                  <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: "var(--green)" }}></span>
+                  <span className="font-semibold" style={{ color: "var(--green)" }}>Bull OB M15</span>
+                  <span className="mono">{fmtPrice(p)}</span>
+                </div>
+              ))}
+              {data.ob.bearish_m15?.map((p, i) => (
+                <div key={`bear-m15-${i}`} className="flex items-center gap-2 text-xs">
+                  <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: "var(--red)" }}></span>
+                  <span className="font-semibold" style={{ color: "var(--red)" }}>Bear OB M15</span>
+                  <span className="mono">{fmtPrice(p)}</span>
+                </div>
+              ))}
               {data.ob.bullish_1h.map((p, i) => (
                 <div key={`bull-1h-${i}`} className="flex items-center gap-2 text-xs">
                   <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: "var(--green)" }}></span>
@@ -301,7 +316,19 @@ export default function BtcPage() {
           <div>
             <div className="text-xs font-semibold mb-2" style={{ color: "var(--text-dim)" }}>FAIR VALUE GAPS</div>
             <div className="space-y-1.5">
-              {data.fvg.up_1h.slice(0, 3).map((g, i) => (
+              {data.fvg.up_m15?.slice(0, 2).map((g, i) => (
+                <div key={`up-m15-${i}`} className="text-xs p-1.5 rounded-lg" style={{ background: "rgba(0,212,170,0.08)" }}>
+                  <span style={{ color: "var(--green)" }}>▲ FVG M15</span>
+                  <span className="mono ml-2">{fmtPrice(g[0])} → {fmtPrice(g[1])}</span>
+                </div>
+              ))}
+              {data.fvg.down_m15?.slice(0, 2).map((g, i) => (
+                <div key={`dn-m15-${i}`} className="text-xs p-1.5 rounded-lg" style={{ background: "rgba(255,77,106,0.08)" }}>
+                  <span style={{ color: "var(--red)" }}>▼ FVG M15</span>
+                  <span className="mono ml-2">{fmtPrice(g[0])} → {fmtPrice(g[1])}</span>
+                </div>
+              ))}
+              {data.fvg.up_1h.slice(0, 2).map((g, i) => (
                 <div key={i} className="text-xs p-1.5 rounded-lg" style={{ background: "rgba(0,212,170,0.08)" }}>
                   <span style={{ color: "var(--green)" }}>▲ FVG 1H</span>
                   <span className="mono ml-2">{fmtPrice(g[0])} → {fmtPrice(g[1])}</span>
@@ -321,20 +348,20 @@ export default function BtcPage() {
           {/* Sweeps */}
           <div>
             <div className="text-xs font-semibold mb-2" style={{ color: "var(--text-dim)" }}>LIQUIDITY SWEEPS</div>
-            <div className="space-y-1.5">
-              {data.sweeps.slice(0, 5).map((s, i) => (
+            <div className="space-y-1.5 overflow-hidden max-h-64 overflow-y-auto">
+              {[...(data.sweeps_m15 || []).map(s => ({...s, tf: 'M15'}), ...(data.sweeps_1h || []).map(s => ({...s, tf: '1H'})))].slice(0, 6).map((s, i) => (
                 <div key={i} className="text-xs p-1.5 rounded-lg"
                   style={{ background: s.type === "sweep_high" ? "rgba(255,77,106,0.08)" : "rgba(0,212,170,0.08)" }}>
                   <div className={s.type === "sweep_high" ? "text-red-400" : "text-green-400"}
                     style={{ color: s.type === "sweep_high" ? "var(--red)" : "var(--green)", fontWeight: 600 }}>
-                    {s.type === "sweep_high" ? "🔴 Sweep High" : "🟢 Sweep Low"}
+                    {s.type === "sweep_high" ? `🔴 Sweep High ${s.tf}` : `🟢 Sweep Low ${s.tf}`}
                   </div>
                   <div className="mono mt-0.5" style={{ color: "var(--text-dim)" }}>
                     Level: {fmtPrice(s.level)} | Close: {fmtPrice(s.close)}
                   </div>
                 </div>
               ))}
-              {!data.sweeps.length &&
+              {!(data.sweeps_m15?.length || data.sweeps_1h?.length) &&
                 <div className="text-xs" style={{ color: "var(--text-dim)" }}>Không có sweep gần đây</div>}
             </div>
           </div>

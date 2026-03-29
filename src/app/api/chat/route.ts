@@ -43,7 +43,7 @@ async function buildContext(isTrading: boolean, isBtc: boolean = false) {
 
     if (isBtc && btc && !btc.error) {
       const vp = btc.vp?.["1h"] || {};
-      const swps = (btc.sweeps||[]).slice(0,2).map((s:{type:string;level:number}) => `${s.type}@${s.level}`).join(", ");
+      const swps = ([...(btc.sweeps_m15||[]), ...(btc.sweeps_1h||[])]).slice(0,2).map((s:{type:string;level:number}) => `${s.type}@${s.level}`).join(", ");
       context += `
 
 === BTC/USDT Binance L2 ===
