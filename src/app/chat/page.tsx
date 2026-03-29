@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 
+const LS_API_KEY = "steven_deepseek_key";
+
 const HUB = process.env.NEXT_PUBLIC_HUB_URL || "https://hub.lomofx.com";
 
 const QUICK_QUESTIONS = [
@@ -28,6 +30,8 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [currentPrice, setCurrentPrice] = useState<string>("—");
   const [chatHistory, setChatHistory] = useState<HistoryItem[]>([]);
+  const [apiKey, setApiKey] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,6 +39,9 @@ export default function ChatPage() {
       .then(r => r.json())
       .then(d => setCurrentPrice(d?.current_price || d?.entry || "4,442"))
       .catch(() => {});
+    // Load saved API key
+    const saved = localStorage.getItem(LS_API_KEY) || "";
+    setApiKey(saved);
   }, []);
 
   useEffect(() => {
@@ -51,9 +58,12 @@ export default function ChatPage() {
 
     try {
       // Call server-side API route (keeps DeepSeek key secure on server)
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const savedKey = localStorage.getItem(LS_API_KEY);
+      if (savedKey) headers["X-Api-Key"] = savedKey;
       const r = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ message: text, history: chatHistory.slice(-8) })
       });
 
@@ -83,10 +93,35 @@ export default function ChatPage() {
     <div className="flex flex-col h-[calc(100dvh-130px)] md:h-[calc(100vh-80px)]">
       {/* Header */}
       <div className="mb-4 flex-shrink-0">
-        <h1 className="text-2xl font-bold gradient-text">Agentic Chat</h1>
-        <p className="text-sm mt-1" style={{ color: "var(--text-dim)" }}>
-          Pattern #1 Chaining · #2 Routing · #3 Parallel · #8 Memory · #12 Exception · #14 RAG · #18 Guardrails
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold gradient-text">Agentic Chat</h1>
+            <p className="text-sm mt-1" style={{ color: "var(--text-dim)" }}>
+              #1 Chaining · #2 Routing · #7 Multi-Agent · #8 Memory · #14 RAG · #18 Guardrails
+            </p>
+          </div>
+          <button onClick={() => setShowSettings(s => !s)}
+            className="btn-ghost px-3 py-1.5 text-xs border-0 cursor-pointer flex-shrink-0" title="API Key Settings">
+            ⚙️ {apiKey ? "Key ✓" : "API Key"}
+          </button>
+        </div>
+        {showSettings && (
+          <div className="mt-2 p-3 rounded-xl flex items-center gap-2"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)" }}>
+            <span className="text-xs flex-shrink-0" style={{ color: "var(--text-dim)" }}>DeepSeek Key:</span>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={e => setApiKey(e.target.value)}
+              placeholder="sk-... (để trống dùng server key)"
+              className="input-dark flex-1 px-3 py-1.5 text-xs"
+            />
+            <button onClick={() => { localStorage.setItem(LS_API_KEY, apiKey); setShowSettings(false); }}
+              className="btn-gold px-3 py-1.5 text-xs cursor-pointer">Lưu</button>
+            <button onClick={() => { localStorage.removeItem(LS_API_KEY); setApiKey(""); setShowSettings(false); }}
+              className="btn-ghost px-3 py-1.5 text-xs border-0 cursor-pointer">Xóa</button>
+          </div>
+        )}
         <div className="flex items-center gap-2 mt-2">
           <div className="w-2 h-2 rounded-full pulse-live" style={{ background: "var(--green)" }}></div>
           <span className="text-xs mono" style={{ color: "var(--text-dim)" }}>

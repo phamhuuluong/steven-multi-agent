@@ -5,7 +5,8 @@ const DEEPSEEK_KEY = process.env.DEEPSEEK_KEY || "";
 
 const TRADING_KEYWORDS = ["vàng","gold","xauusd","mua","bán","sell","buy","lot","lệnh",
   "entry","sl","tp","stop","cvd","bookmap","chart","giá","signal","tín hiệu",
-  "phân tích","kháng cự","hỗ trợ","trend","rủi ro","volume","dom","thị trường","retest"];
+  "phân tích","kháng cự","hỗ trợ","trend","rủi ro","volume","dom","thị trường","retest",
+  "btc","bitcoin","crypto","binance","wyckoff","fvg","ob","sweep","pip","m15","m5","h1"];
 
 async function buildContext(isTrading: boolean) {
   try {
@@ -62,6 +63,8 @@ export async function POST(req: NextRequest) {
   try {
     const { message, history = [] } = await req.json();
     if (!message) return NextResponse.json({ error: "No message" }, { status: 400 });
+    const userKey = req.headers.get("X-Api-Key") || "";
+
 
     const lower = message.toLowerCase();
     const isTrading = TRADING_KEYWORDS.some(k => lower.includes(k));
@@ -84,7 +87,7 @@ export async function POST(req: NextRequest) {
 
     const r = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
-      headers: { "Authorization": `Bearer ${DEEPSEEK_KEY}`, "Content-Type": "application/json" },
+      headers: { "Authorization": `Bearer ${userKey || DEEPSEEK_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ model: "deepseek-chat", messages, max_tokens: 700 }),
       signal: AbortSignal.timeout(25000)
     });
