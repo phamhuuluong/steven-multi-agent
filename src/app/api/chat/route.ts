@@ -3,14 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 const HUB = process.env.NEXT_PUBLIC_HUB_URL || "https://hub.lomofx.com";
 const DEEPSEEK_KEY = process.env.DEEPSEEK_KEY || "";
 
-// Pattern #1: Prompt Chaining — hub context → system prompt → AI response
-// Pattern #2: Routing — detect trading vs general questions
-// Pattern #12: Exception Handling — fallback responses
-// Pattern #18: Guardrails — validate lot size before responding
-
 const TRADING_KEYWORDS = ["vàng","gold","xauusd","mua","bán","sell","buy","lot","lệnh",
   "entry","sl","tp","stop","cvd","bookmap","chart","giá","signal","tín hiệu",
-  "phân tích","kháng cự","hỗ trợ","trend","rủi ro","volume","dom","thị trường"];
+  "phân tích","kháng cự","hỗ trợ","trend","rủi ro","volume","dom","thị trường","retest"];
 
 async function buildContext(isTrading: boolean) {
   try {
@@ -18,9 +13,9 @@ async function buildContext(isTrading: boolean) {
       fetch(`${HUB}/orderflow/snapshot`, { cache: "no-store" }),
     ];
     if (isTrading) promises.push(fetch(`${HUB}/api/market-context`, { cache: "no-store" }));
-    
+
     const results = await Promise.allSettled(promises);
-    const snap = results[0].status === "fulfilled" && results[0].value.ok 
+    const snap = results[0].status === "fulfilled" && results[0].value.ok
       ? await results[0].value.json() : {};
     const ctx = isTrading && results[1]?.status === "fulfilled" && (results[1] as PromiseFulfilledResult<Response>).value.ok
       ? await (results[1] as PromiseFulfilledResult<Response>).value.json() : {};
@@ -29,8 +24,7 @@ async function buildContext(isTrading: boolean) {
     const bias = snap?.overall_bias || "N/A";
     const conf = snap?.confidence || 0;
 
-    const priceCtx = `Giá XAUUSD thực tế từ hub: ${price} | AI Council: ${bias} | Confidence: ${conf}%`;
-    
+    const priceCtx = `Giá XAUUSD thực tế từ hub: ${price} | AI Council bias: ${bias} | Confidence: ${conf}%`;
     if (isTrading) {
       const marketCtx = ctx?.context?.slice(0, 2000) || "";
       return `${priceCtx}\nSL: ${snap?.sl || "N/A"} | TP: ${snap?.tp || "N/A"}\n\n${marketCtx}`;
@@ -48,7 +42,17 @@ TÍNH LOT SIZE (CÔNG THỨC ĐÚNG):
 • XAUUSD: Lot = (Vốn × %Risk) / (SL_pts × 100)
 • $3,000 vốn: an toàn 0.01-0.05 lot. Trên 0.1 lot = nguy hiểm cháy tài khoản!
 
-QUY TẮC:
+⚠️ QUY TẮC PHÂN BIỆT RETEST vs ENTRY (QUAN TRỌNG NHẤT):
+• RETEST = sự kiện giá: giá QUAY LẠI kiểm tra vùng cũ sau breakout. Đây là diễn biến thị trường, KHÔNG PHẢI lệnh vào.
+• ENTRY = điểm vào lệnh THỰC SỰ: chỉ khi retest xác nhận có seller/buyer phản ứng (confirmation signal).
+• KHI NÓI VỀ RETEST: LUÔN nêu rõ xu hướng chính TRƯỚC. Ví dụ:
+  ✅ "Xu hướng chính: SELL. Giá đang retest kháng cự 4498. Nếu seller xác nhận tại đây → entry SELL, KHÔNG vào BUY ngược trend."
+  ❌ SAI: Chỉ nói "chờ retest 4498" mà không nêu hướng giao dịch.
+• Bias SELL + retest kháng cự = cơ hội SELL thêm (KHÔNG phải BUY).
+• Bias BUY + retest hỗ trợ = cơ hội BUY thêm (KHÔNG phải SELL).
+• KHÔNG BAO GIỜ để user tự suy diễn hướng vào lệnh khi nói về retest.
+
+QUY TẮC CHUNG:
 • Chào hỏi → thân thiện, ngắn gọn
 • GIÁ: LUÔN dùng từ context bên dưới. TUYỆT ĐỐI KHÔNG tự bịa giá
 • Trading → phân tích dữ liệu thực, Pattern #18 Guardrails cho lot size
@@ -61,8 +65,7 @@ export async function POST(req: NextRequest) {
 
     const lower = message.toLowerCase();
     const isTrading = TRADING_KEYWORDS.some(k => lower.includes(k));
-    
-    // Pattern #3: Parallelization — fetch context while building prompt
+
     const context = await buildContext(isTrading);
     const userContent = `${context}\n\nCâu hỏi: ${message}`;
 
@@ -73,7 +76,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Pattern #16: Resource-Aware Optimization — choose fast model for chat
     const messages = [
       { role: "system", content: SYSTEM_PROMPT },
       ...history.slice(-6).map((h: {role: string; content: string}) => ({ role: h.role, content: h.content })),
@@ -88,9 +90,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!r.ok) {
-      const err = await r.text();
-      // Pattern #12: Exception Handling
-      return NextResponse.json({ 
+      return NextResponse.json({
         reply: `⚠️ DeepSeek API lỗi (${r.status}). Thử lại sau.\n\n📊 Data hub hiện tại: ${context.slice(0, 300)}`,
         patterns: ["#12 ExceptionHandling"]
       });
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ reply, patterns });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ 
+    return NextResponse.json({
       reply: `⚠️ Lỗi: ${message}`,
       patterns: ["#12 ExceptionHandling"]
     });

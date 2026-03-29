@@ -161,9 +161,26 @@ export default function DashboardPage() {
                 <span style={{ color: "var(--red)" }}>{sellPct}% Sell</span>
               </div>
             </div>
+
+            {/* Retest vs Entry warning */}
+            <div className="mt-4 px-4 py-3 rounded-xl flex items-start gap-2"
+              style={{ background: "rgba(245,166,35,0.06)", border: "1px solid rgba(245,166,35,0.2)" }}>
+              <span className="text-sm flex-shrink-0 mt-0.5">⚠️</span>
+              <div className="text-xs leading-relaxed" style={{ color: "var(--text-dim)" }}>
+                <span className="font-semibold" style={{ color: "var(--gold)" }}>Lưu ý: Retest ≠ Entry. </span>
+                Khi AI đề cập &quot;retest&quot;, đây là vùng <em>theo dõi</em> — giá quay lại kiểm tra vùng cũ.
+                Xu hướng chính vẫn là <span className={`font-bold px-1.5 py-0.5 rounded-md text-xs ${getBiasClass(bias)}`}>{bias}</span>.
+                {bias.toUpperCase().includes("SELL")
+                  ? " Retest kháng cự = cơ hội SELL thêm, không phải tín hiệu mua ngược."
+                  : bias.toUpperCase().includes("BUY")
+                  ? " Retest hỗ trợ = cơ hội BUY thêm, không phải tín hiệu bán ngược."
+                  : " Chờ xác nhận trước khi vào lệnh."}
+              </div>
+            </div>
           </div>
         </div>
       )}
+
 
       {/* 21 Patterns grid */}
       <div>
