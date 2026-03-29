@@ -8,29 +8,51 @@ const TRADING_KEYWORDS = ["vàng","gold","xauusd","mua","bán","sell","buy","lot
   "phân tích","kháng cự","hỗ trợ","trend","rủi ro","volume","dom","thị trường","retest",
   "btc","bitcoin","crypto","binance","wyckoff","fvg","ob","sweep","pip","m15","m5","h1"];
 
-async function buildContext(isTrading: boolean) {
+const BTC_KEYWORDS = ["btc","bitcoin","crypto","binance","btcusd"];
+
+async function buildContext(isTrading: boolean, isBtc: boolean = false) {
   try {
-    const promises: Promise<Response>[] = [
+    const fetches: Promise<Response>[] = [
       fetch(`${HUB}/orderflow/snapshot`, { cache: "no-store" }),
     ];
-    if (isTrading) promises.push(fetch(`${HUB}/api/market-context`, { cache: "no-store" }));
+    if (isTrading) fetches.push(fetch(`${HUB}/api/market-context`, { cache: "no-store" }));
+    if (isBtc)     fetches.push(fetch(`${HUB}/btc/analysis`, { cache: "no-store" }));
 
-    const results = await Promise.allSettled(promises);
+    const results = await Promise.allSettled(fetches);
     const snap = results[0].status === "fulfilled" && results[0].value.ok
       ? await results[0].value.json() : {};
-    const ctx = isTrading && results[1]?.status === "fulfilled" && (results[1] as PromiseFulfilledResult<Response>).value.ok
+    const ctx  = isTrading && results[1]?.status === "fulfilled" && (results[1] as PromiseFulfilledResult<Response>).value.ok
       ? await (results[1] as PromiseFulfilledResult<Response>).value.json() : {};
+    const isBtcIdx = isTrading ? 2 : 1;
+    const btc  = isBtc && results[isBtcIdx]?.status === "fulfilled" && (results[isBtcIdx] as PromiseFulfilledResult<Response>).value.ok
+      ? await (results[isBtcIdx] as PromiseFulfilledResult<Response>).value.json() : null;
 
     const price = snap?.current_price || snap?.entry || "N/A";
-    const bias = snap?.overall_bias || "N/A";
-    const conf = snap?.confidence || 0;
+    const bias  = snap?.overall_bias || "N/A";
+    const conf  = snap?.confidence || 0;
 
-    const priceCtx = `Giá XAUUSD thực tế từ hub: ${price} | AI Council bias: ${bias} | Confidence: ${conf}%`;
-    if (isTrading) {
-      const marketCtx = ctx?.context?.slice(0, 2000) || "";
-      return `${priceCtx}\nSL: ${snap?.sl || "N/A"} | TP: ${snap?.tp || "N/A"}\n\n${marketCtx}`;
+    let context = `XAUUSD: ${price} | Bias: ${bias} | Conf: ${conf}% | SL: ${snap?.sl||"N/A"} | TP: ${snap?.tp||"N/A"}`;
+    if (isTrading && ctx?.context) context += `\n${ctx.context.slice(0, 1200)}`;
+
+    if (isBtc && btc) {
+      const vp = btc.vp?.["1h"] || {};
+      const obs = [...(btc.ob?.bullish_1h||[]), ...(btc.ob?.bearish_1h||[])].slice(0,4).join(", ");
+      const fvgs = (btc.fvg?.up_1h||[]).slice(0,2).map((g:[number,number]) => `${g[0]}-${g[1]}`).join(", ");
+      const swps = (btc.sweeps||[]).slice(0,2).map((s:{type:string;level:number}) => `${s.type}@${s.level}`).join(", ");
+      context += `
+
+=== BTC/USDT (Binance L2 — Real-time) ===
+Gia: $${btc.price?.toLocaleString()} | 1H: ${btc.change_1h}% | 24H: ${btc.change_24h}%
+Bias: ${btc.bias} | Wyckoff: ${btc.wyckoff_phase} | M15: ${btc.m15_signal||"N/A"} (${btc.m15_momentum_pct||0}%)
+VP 1H: POC=${vp.poc} VAH=${vp.vah} VAL=${vp.val}
+CVD: ${btc.cvd} ${btc.cvd_divergence ? "DIV:"+btc.cvd_divergence_type : ""}
+L/S: ${btc.long_ratio}% / ${btc.short_ratio}% | OI 24H: ${btc.oi_change_24h_pct}%
+OB: ${obs||"N/A"} | FVG: ${fvgs||"N/A"} | Sweep: ${swps||"none"}
+Bid walls: ${(btc.l2_bid_walls||[]).slice(0,2).map((w:{price:number;qty_usd:number}) => `$${w.price}(${w.qty_usd}M$)`).join(", ")||"N/A"}
+BTC pip=$10/lot (Exness). SL/TP min 50-200 pips. BTCUSDT Binance = BTCUSD Exness.`;
     }
-    return priceCtx;
+
+    return context;
   } catch {
     return "Hub data unavailable";
   }
@@ -68,8 +90,9 @@ export async function POST(req: NextRequest) {
 
     const lower = message.toLowerCase();
     const isTrading = TRADING_KEYWORDS.some(k => lower.includes(k));
+    const isBtc = BTC_KEYWORDS.some(k => lower.includes(k));
 
-    const context = await buildContext(isTrading);
+    const context = await buildContext(isTrading, isBtc);
     const userContent = `${context}\n\nCâu hỏi: ${message}`;
 
     if (!DEEPSEEK_KEY) {
