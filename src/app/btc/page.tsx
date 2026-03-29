@@ -12,6 +12,7 @@ type BtcData = {
   wyckoff_phase: string; cvd: number; cvd_divergence: boolean; cvd_divergence_type: string;
   long_ratio: number; short_ratio: number; open_interest: number; oi_change_24h_pct: number;
   l2_bid_walls: { price: number; qty_usd: number }[]; l2_ask_walls: { price: number; qty_usd: number }[];
+  m15_signal: string; m15_momentum_pct: number;
   summary: string; timestamp: string;
 };
 
@@ -127,6 +128,23 @@ export default function BtcPage() {
              data.wyckoff_phase === "Distribution" ? "Smart money distributing holdings" :
              "Sideways, direction unclear"}
           </div>
+        </div>
+
+        {/* M15 Signal card */}
+        <div className="glass p-4">
+          <div className="text-xs mb-1" style={{ color: "var(--text-dim)" }}>M15 SIGNAL</div>
+          <div className="flex items-center gap-2">
+            <span style={{
+              fontSize: "1.1rem", fontWeight: 700,
+              color: data.m15_signal === "bullish" ? "var(--green)" : data.m15_signal === "bearish" ? "var(--red)" : "var(--text-dim)"
+            }}>
+              {data.m15_signal === "bullish" ? "▲ Bullish" : data.m15_signal === "bearish" ? "▼ Bearish" : "— Neutral"}
+            </span>
+          </div>
+          <div className="text-xs mt-1 mono" style={{ color: "var(--text-dim)" }}>
+            Momentum: {(data.m15_momentum_pct ?? 0) >= 0 ? "+" : ""}{data.m15_momentum_pct ?? 0}%
+          </div>
+          <div className="text-xs mt-1" style={{ color: "var(--text-dim)" }}>EMA9/21 cross · Preferred TF</div>
         </div>
 
         <div className="glass p-4">

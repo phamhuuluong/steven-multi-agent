@@ -31,25 +31,29 @@ async function buildContext(isTrading: boolean, isBtc: boolean = false) {
     const bias  = snap?.overall_bias || "N/A";
     const conf  = snap?.confidence || 0;
 
-    let context = `XAUUSD: ${price} | Bias: ${bias} | Conf: ${conf}% | SL: ${snap?.sl||"N/A"} | TP: ${snap?.tp||"N/A"}`;
+    // VN time injection — so AI always knows correct day/time
+    const vnNow = new Date().toLocaleString("vi-VN", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      weekday: "long", year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit"
+    });
+
+    let context = `[THỜI GIAN VIỆT NAM: ${vnNow} (GMT+7)]\nXAUUSD: ${price} | Bias: ${bias} | Conf: ${conf}% | SL: ${snap?.sl||"N/A"} | TP: ${snap?.tp||"N/A"}`;
     if (isTrading && ctx?.context) context += `\n${ctx.context.slice(0, 1200)}`;
 
-    if (isBtc && btc) {
+    if (isBtc && btc && !btc.error) {
       const vp = btc.vp?.["1h"] || {};
-      const obs = [...(btc.ob?.bullish_1h||[]), ...(btc.ob?.bearish_1h||[])].slice(0,4).join(", ");
-      const fvgs = (btc.fvg?.up_1h||[]).slice(0,2).map((g:[number,number]) => `${g[0]}-${g[1]}`).join(", ");
       const swps = (btc.sweeps||[]).slice(0,2).map((s:{type:string;level:number}) => `${s.type}@${s.level}`).join(", ");
       context += `
 
-=== BTC/USDT (Binance L2 — Real-time) ===
-Gia: $${btc.price?.toLocaleString()} | 1H: ${btc.change_1h}% | 24H: ${btc.change_24h}%
-Bias: ${btc.bias} | Wyckoff: ${btc.wyckoff_phase} | M15: ${btc.m15_signal||"N/A"} (${btc.m15_momentum_pct||0}%)
-VP 1H: POC=${vp.poc} VAH=${vp.vah} VAL=${vp.val}
-CVD: ${btc.cvd} ${btc.cvd_divergence ? "DIV:"+btc.cvd_divergence_type : ""}
-L/S: ${btc.long_ratio}% / ${btc.short_ratio}% | OI 24H: ${btc.oi_change_24h_pct}%
-OB: ${obs||"N/A"} | FVG: ${fvgs||"N/A"} | Sweep: ${swps||"none"}
-Bid walls: ${(btc.l2_bid_walls||[]).slice(0,2).map((w:{price:number;qty_usd:number}) => `$${w.price}(${w.qty_usd}M$)`).join(", ")||"N/A"}
-BTC pip=$10/lot (Exness). SL/TP min 50-200 pips. BTCUSDT Binance = BTCUSD Exness.`;
+=== BTC/USDT Binance L2 ===
+Price: $${btc.price?.toLocaleString()} | 24H: ${btc.change_24h}%
+Bias: ${btc.bias} | Wyckoff: ${btc.wyckoff_phase}
+M15: ${btc.m15_signal||"N/A"} (${btc.m15_momentum_pct||0}%)
+POC=${vp.poc} VAH=${vp.vah} VAL=${vp.val}
+CVD: ${btc.cvd} ${btc.cvd_divergence ? "DIV:"+btc.cvd_divergence_type : ""} | L/S: ${btc.long_ratio}%/${btc.short_ratio}%
+Sweeps: ${swps||"none"} | OI 24H: ${btc.oi_change_24h_pct}%
+Note: SL/TP min 50-200 pips. BTCUSDT=BTCUSD Exness.`;
     }
 
     return context;
@@ -83,11 +87,15 @@ QUY TẮC CỨNG:
 • Bias BUY + retest hỗ trợ = theo dõi, chờ xác nhận → BUY (KHÔNG vào SELL).
 • LUÔN nêu xu hướng chính TRƯỚC khi nói về retest.
 
-QUY TẮC CHUNG:
+QUY TẮC PHẢN HỒI:
+• Ngôn ngữ: TỰ ĐỘNG phát hiện ngôn ngữ user và trả lời bằng CÙNG ngôn ngữ đó.
+  - User hỏi tiếng Việt → trả lời tiếng Việt
+  - User hỏi tiếng Anh → respond in English
+  - User hỏi ngôn ngữ khác → dùng ngôn ngữ đó
 • Chào hỏi → thân thiện, ngắn gọn
 • GIÁ: LUÔN dùng từ context bên dưới. TUYỆT ĐỐI KHÔNG tự bịa giá
 • Trading → phân tích dữ liệu thực, Pattern #18 Guardrails cho lot size
-• Trả lời TIẾNG VIỆT, ngắn gọn, có số liệu cụ thể`;
+• Ngắn gọn, có số liệu cụ thể`;
 
 export async function POST(req: NextRequest) {
   try {
