@@ -32,6 +32,8 @@ export default function ChatPage() {
   const [chatHistory, setChatHistory] = useState<HistoryItem[]>([]);
   const [apiKey, setApiKey] = useState("");
   const [showSettings, setShowSettings] = useState(false);
+  const [testStatus, setTestStatus] = useState<{ok:boolean;msg:string}|null>(null);
+  const [testing, setTesting] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -89,6 +91,21 @@ export default function ChatPage() {
     setLoading(false);
   };
 
+  const testConnection = async () => {
+    setTesting(true); setTestStatus(null);
+    const headers: Record<string,string> = {};
+    const savedKey = localStorage.getItem(LS_API_KEY);
+    if (savedKey) headers["X-Api-Key"] = savedKey;
+    try {
+      const r = await fetch("/api/chat", { headers });
+      const d = await r.json();
+      setTestStatus({ ok: d.ok, msg: d.message || (d.ok ? "✅ OK" : "⚠️ Lỗi") });
+    } catch (e: unknown) {
+      setTestStatus({ ok: false, msg: "⚠️ Không kết nối được server: " + (e instanceof Error ? e.message : "unknown") });
+    }
+    setTesting(false);
+  };
+
   return (
     <div className="flex flex-col h-[calc(100dvh-130px)] md:h-[calc(100vh-80px)]">
       {/* Header */}
@@ -106,20 +123,41 @@ export default function ChatPage() {
           </button>
         </div>
         {showSettings && (
-          <div className="mt-2 p-3 rounded-xl flex items-center gap-2"
+          <div className="mt-2 p-3 rounded-xl"
             style={{ background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)" }}>
-            <span className="text-xs flex-shrink-0" style={{ color: "var(--text-dim)" }}>DeepSeek Key:</span>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={e => setApiKey(e.target.value)}
-              placeholder="sk-... (để trống dùng server key)"
-              className="input-dark flex-1 px-3 py-1.5 text-xs"
-            />
-            <button onClick={() => { localStorage.setItem(LS_API_KEY, apiKey); setShowSettings(false); }}
-              className="btn-gold px-3 py-1.5 text-xs cursor-pointer">Lưu</button>
-            <button onClick={() => { localStorage.removeItem(LS_API_KEY); setApiKey(""); setShowSettings(false); }}
-              className="btn-ghost px-3 py-1.5 text-xs border-0 cursor-pointer">Xóa</button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs flex-shrink-0" style={{ color: "var(--text-dim)" }}>DeepSeek Key (tuỳ chọn):</span>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={e => setApiKey(e.target.value)}
+                placeholder="sk-... (để trống = dùng Hub admin key)"
+                className="input-dark flex-1 px-3 py-1.5 text-xs"
+              />
+              <button onClick={() => { localStorage.setItem(LS_API_KEY, apiKey); setShowSettings(false); }}
+                className="btn-gold px-3 py-1.5 text-xs cursor-pointer">Lưu</button>
+              <button onClick={() => { localStorage.removeItem(LS_API_KEY); setApiKey(""); setShowSettings(false); }}
+                className="btn-ghost px-3 py-1.5 text-xs border-0 cursor-pointer">Xóa</button>
+              <button onClick={testConnection} disabled={testing}
+                style={{
+                  padding: "6px 12px", fontSize: "11px", fontWeight: 700,
+                  borderRadius: "8px", border: "1px solid rgba(0,212,170,0.4)",
+                  background: "rgba(0,212,170,0.1)", color: "#00d4aa",
+                  cursor: testing ? "wait" : "pointer", opacity: testing ? 0.6 : 1
+                }}>
+                {testing ? "⏳ Testing..." : "🔌 Test kết nối"}
+              </button>
+            </div>
+            {testStatus && (
+              <div style={{
+                marginTop: "8px", padding: "8px 12px", borderRadius: "8px", fontSize: "12px",
+                background: testStatus.ok ? "rgba(0,212,170,0.08)" : "rgba(255,77,106,0.08)",
+                color: testStatus.ok ? "#00d4aa" : "#ff4d6a",
+                border: `1px solid ${testStatus.ok ? "rgba(0,212,170,0.3)" : "rgba(255,77,106,0.3)"}`
+              }}>
+                {testStatus.msg}
+              </div>
+            )}
           </div>
         )}
         <div className="flex items-center gap-2 mt-2">

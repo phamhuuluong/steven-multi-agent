@@ -1,7 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const HUB = process.env.NEXT_PUBLIC_HUB_URL || "https://hub.lomofx.com";
-const DEEPSEEK_KEY = process.env.DEEPSEEK_KEY || "";
+// DEEPSEEK_KEY from env OR fetched from Hub admin config at runtime
+const ENV_KEY = process.env.DEEPSEEK_KEY || "";
+
+/** Fetch API key from Hub admin /api/config (so Hub admin panel key works) */
+async function getDeepSeekKey(userKey?: string): Promise<string> {
+  if (userKey) return userKey;
+  if (ENV_KEY)  return ENV_KEY;
+  try {
+    const r = await fetch(`${HUB}/api/config`, { cache: "no-store", signal: AbortSignal.timeout(4000) });
+    if (r.ok) {
+      const cfg = await r.json();
+      // Hub stores keys as cfg.keys.deepseek or cfg.keys.gemini etc.
+      const k = cfg?.keys?.deepseek || cfg?.deepseek_key || cfg?.key || "";
+      if (k && k.startsWith("sk-")) return k;
+    }
+  } catch {}
+  return "";
+}
+
+/** GET — quick test endpoint for connection status */
+export async function GET(req: NextRequest) {
+  const userKey = req.headers.get("X-Api-Key") || "";
+  const key = await getDeepSeekKey(userKey);
+  if (!key) {
+    return NextResponse.json({ ok: false, status: "no_key", message: "Chưa cấu hình API key. Vào Hub Admin → Cài đặt để thêm DeepSeek key." });
+  }
+  try {
+    const r = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "deepseek-chat", messages: [{ role: "user", content: "ping — reply exactly: pong" }], max_tokens: 10 }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (r.ok) {
+      const d = await r.json();
+      return NextResponse.json({ ok: true, status: "connected", message: `✅ Kết nối OK — DeepSeek phản hồi: "${d?.choices?.[0]?.message?.content || "ok"}"` });
+    }
+    return NextResponse.json({ ok: false, status: `api_error_${r.status}`, message: `⚠️ DeepSeek API lỗi ${r.status} — Key có thể sai hoặc hết quota.` });
+  } catch (e: unknown) {
+    return NextResponse.json({ ok: false, status: "timeout", message: `⚠️ Timeout: ${e instanceof Error ? e.message : "unknown"}` });
+  }
+}
 
 const TRADING_KEYWORDS = ["vàng","gold","xauusd","mua","bán","sell","buy","lot","lệnh",
   "entry","sl","tp","stop","cvd","bookmap","chart","giá","signal","tín hiệu",
@@ -65,38 +106,22 @@ Note: SL/TP min 50-200 pips. BTCUSDT=BTCUSD Exness.`;
 const SYSTEM_PROMPT = `Bạn là Steven AI — chuyên gia Bookmap L2 Order Flow & quản lý rủi ro vàng XAUUSD.
 Tích hợp 21 Agentic Design Patterns để phân tích thị trường chuyên nghiệp.
 
+QUY TẮC CỐT LÕI MỚI (PHẢI TUÂN THỦ 100%):
+• CỰC KỲ NGẮN GỌN & ĐÚNG TRỌNG TÂM. Trả lời ngay vào câu hỏi của user chưa đầy 3 câu.
+• KHÔNG lặp lại các dữ liệu (Data) mà user đã biết hoặc hệ thống cung cấp trong context (như CVD, độ lệch, Bookmap) trừ khi CẦN THIẾT cho luận điểm phân tích.
+• Đưa ra QUYẾT ĐỊNH RÕ RÀNG (Buy/Sell/Wait) kèm điểm Entry, SL, TP ngay lập tức. Format: "BUY tại [x], SL [y], TP [z]".
+• Không giải thích dông dài các thuật ngữ cơ bản.
+
 TÍNH LOT SIZE (CÔNG THỨC ĐÚNG):
 • XAUUSD: Lot = (Vốn × %Risk) / (SL_pts × 100)
-• $3,000 vốn: an toàn 0.01-0.05 lot. Trên 0.1 lot = nguy hiểm cháy tài khoản!
+• $3,000 vốn: an toàn 0.01-0.05 lot. Trên 0.1 lot = nguy hiểm cháy!
 
-⚠️ QUY TẮC TỐI QUAN TRỌNG — PHÂN BIỆT ENTRY vs RETEST:
+⚠️ PHÂN BIỆT ENTRY vs RETEST:
+• Bias "SELL" + có entry/SL/TP → LỆNH SELL. Nói ngắn: "✅ Có lệnh SELL tại [giá], SL=[x], TP=[y]"
+• Chỉ "retest tại [vùng]" → Nói: "⚠️ VÙNG RETEST, CHƯA VÀO LỆNH. Đợi nến đỏ phá xuống mới SELL."
 
-KHI HỘI ĐỒNG AI ĐƯA RA TÍN HIỆU, PHẢI NÓI RÕ:
-• Nếu bias = "SELL" + có entry/SL/TP → Đây là LỆNH SELL. Nói rõ: "✅ Hội đồng AI đang có lệnh SELL tại [giá], SL=[x], TP=[y]"
-• Nếu chỉ nói "retest tại [vùng]" → Đây CHƯA PHẢI entry. Nói rõ: "⚠️ Đây là VÙNG RETEST, CHƯA CÓ LỆNh. Chỉ vào lệnh khi có confirmation signal."
-
-CÁC MẪU BẮT BUỘC:
-✅ ĐÚNG: "Hội đồng AI bias SELL. Hiện đang RETEST kháng cự 4498 — ĐÂY CHƯA PHẢI ENTRY. Đợi nến xác nhận seller phản ứng (nến đỏ đóng cửa dưới 4498) mới vào SELL."
-✅ ĐÚNG: "Hội đồng AI có tín hiệu SELL tại 4495, SL 4512, TP 4448 — đây là ENTRY POINT thực sự."
-❌ SAI: Chỉ nói "chờ retest 4498" mà không giải thích đó có phải entry không.
-❌ SAI: Nói "retest" mà không nêu xu hướng chính + không cảnh báo chưa vào lệnh.
-
-QUY TẮC CỨNG:
-• RETEST ≠ ENTRY. Retest là sự kiện giá, entry cần confirmation.
-• Bias SELL + retest kháng cự = theo dõi, chờ xác nhận → SELL (KHÔNG vào BUY).
-• Bias BUY + retest hỗ trợ = theo dõi, chờ xác nhận → BUY (KHÔNG vào SELL).
-• LUÔN nêu xu hướng chính TRƯỚC khi nói về retest.
-
-QUY TẮC CỨNG VỀ NGÔN NGỮ (CRITICAL LANGUAGE REQUIREMENT):
-• You MUST reply in the exact same language as the user's question.
-• If the user asks in English, reply in English.
-• If Chinese, reply in Chinese.
-• If Vietnamese, reply in Vietnamese.
-• This is an absolute requirement. Do not use Vietnamese if the user speaks another language.
-• Chào hỏi → thân thiện, ngắn gọn
-• GIÁ: LUÔN dùng từ context bên dưới. TUYỆT ĐỐI KHÔNG tự bịa giá
-• Trading → phân tích dữ liệu thực, Pattern #18 Guardrails cho lot size
-• Ngắn gọn, có số liệu cụ thể`;
+NGÔN NGỮ ĐỒNG NHẤT VỚI USER:
+• Bắt buộc trả lời bằng chính ngôn ngữ user đã hỏi (Tiếng Việt/English/Chinese...).`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -112,9 +137,10 @@ export async function POST(req: NextRequest) {
     const context = await buildContext(isTrading, isBtc);
     const userContent = `${context}\n\nCâu hỏi: ${message}`;
 
-    if (!DEEPSEEK_KEY) {
+    const key = await getDeepSeekKey(userKey);
+    if (!key) {
       return NextResponse.json({
-        reply: `🤖 Demo mode — DeepSeek key chưa cấu hình.\n\n📊 Data hub: ${context.slice(0, 200)}`,
+        reply: `🤖 Demo mode — DeepSeek key chưa cấu hình.\n\nVào Hub Admin → Cài đặt → thêm DeepSeek API key để bật đầy đủ.\n\n📊 Data hub: ${context.slice(0, 200)}`,
         patterns: isTrading ? ["#2 Routing→Trading", "#3 Parallel"] : ["#2 Routing→General"]
       });
     }
@@ -127,7 +153,7 @@ export async function POST(req: NextRequest) {
 
     const r = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
-      headers: { "Authorization": `Bearer ${userKey || DEEPSEEK_KEY}`, "Content-Type": "application/json" },
+      headers: { "Authorization": `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ model: "deepseek-chat", messages, max_tokens: 700 }),
       signal: AbortSignal.timeout(25000)
     });
