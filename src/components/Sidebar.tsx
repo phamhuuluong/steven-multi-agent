@@ -9,10 +9,10 @@ const nav = [
   { href: "/scanner", icon: "🔍", label: "Scanner", pattern: "Đa khung · Tương quan" },
   { href: "/btc", icon: "₿", label: "BTC", pattern: "Binance L2 · SMC" },
   { href: "/council", icon: "🏛️", label: "AI Council", pattern: "Multi-Agent" },
+  { href: "/trades", icon: "⚡", label: "AI Signal", pattern: "MT5 Execution" },
   { href: "/chat", icon: "💬", label: "Chat", pattern: "Routing + RAG" },
   { href: "/news", icon: "📰", label: "Tin Tức", pattern: "24h · Lịch KT" },
   { href: "/calculator", icon: "🛡️", label: "Risk", pattern: "Guardrails" },
-  { href: "/signals", icon: "📈", label: "Signals", pattern: "Evaluation" },
 ];
 
 export default function Sidebar() {
@@ -36,7 +36,7 @@ export default function Sidebar() {
           </div>
           <div className="mt-3 flex items-center gap-2">
             <div className="w-2 h-2 rounded-full pulse-live flex-shrink-0" style={{ background: "var(--green)" }}></div>
-            <span className="text-xs truncate" style={{ color: "var(--text-dim)" }}>hub.lomofx.com</span>
+            <span className="text-xs truncate" style={{ color: "var(--text-dim)" }}>ATTRAOS Live Stream</span>
           </div>
         </div>
 
