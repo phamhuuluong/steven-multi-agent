@@ -45,22 +45,31 @@ function Chip({ label, color }: { label: string; color?: string }) {
 
 export default function BtcPage() {
   const [data, setData] = useState<BtcData | null>(null);
+  const [historyNode, setHistoryNode] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState("");
 
-  const fetch = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await window.fetch(`${HUB}/btc/analysis`, { cache: "no-store" });
+      const [r, h] = await Promise.all([
+        window.fetch(`${HUB}/btc/analysis`, { cache: "no-store" }),
+        window.fetch(`${HUB}/api/council_history`, { cache: "no-store" })
+      ]);
       if (r.ok) {
         setData(await r.json());
-        setLastUpdate(new Date().toLocaleTimeString("vi-VN"));
       }
+      if (h.ok) {
+        const histData = await h.json();
+        const btcNode = histData.find((n: any) => n.asset?.includes("BTC"));
+        if (btcNode) setHistoryNode(btcNode);
+      }
+      setLastUpdate(new Date().toLocaleTimeString("vi-VN"));
     } catch {}
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetch(); const id = setInterval(fetch, 60000); return () => clearInterval(id); }, [fetch]);
+  useEffect(() => { fetchAll(); const id = setInterval(fetchAll, 60000); return () => clearInterval(id); }, [fetchAll]);
 
   if (loading && !data) return (
     <div className="flex items-center justify-center h-64">
@@ -91,7 +100,7 @@ export default function BtcPage() {
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full pulse-live" style={{ background: "var(--green)" }}></div>
           <span className="text-xs mono" style={{ color: "var(--text-dim)" }}>{lastUpdate}</span>
-          <button onClick={fetch} disabled={loading}
+          <button onClick={fetchAll} disabled={loading}
             className="btn-ghost px-3 py-1.5 text-xs border-0 cursor-pointer">↻</button>
         </div>
       </div>
@@ -368,17 +377,59 @@ export default function BtcPage() {
         </div>
       </div>
 
-      {/* AI Summary */}
-      <div className="glass px-4 py-3 flex items-start gap-2">
-        <span className="text-lg flex-shrink-0">🤖</span>
-        <div className="text-sm" style={{ color: "var(--text-dim)" }}>
-          <span className="font-semibold" style={{ color: "var(--gold)" }}>AI Summary: </span>
-          {data.summary}
-          <span className="ml-2 text-xs" style={{ color: "var(--text-dim)", fontSize: "10px" }}>
-            · {data.timestamp ? new Date(data.timestamp).toLocaleString("vi-VN") : ""}
-          </span>
+      {/* 3-Round AI Council Debate (V1, V2, V3) */}
+      {historyNode && (
+        <div className="glass p-4 mt-6">
+          <div className="text-xs font-semibold mb-4" style={{ color: "var(--gold)" }}>
+            ⚡ AI COUNCIL — 3 VÒNG PHÁN QUYẾT
+            <span className="ml-2 px-2 py-0.5 rounded text-xs" style={{ background: "rgba(255,255,255,0.06)", color: "var(--text-dim)" }}>
+              {historyNode.last_council_run ? new Date(historyNode.last_council_run).toLocaleString("vi-VN") : ""}
+            </span>
+          </div>
+
+          {/* Result Tag */}
+          <div className="flex items-center gap-3 mb-6">
+            <span className={`px-4 py-1.5 rounded-full text-sm font-bold ${biasClass(historyNode.decision)}`}>
+              VERDICT: {historyNode.decision || "WAIT"}
+            </span>
+            <div className="text-xs mono" style={{ color: "var(--text-dim)" }}>
+               Conf: <span style={{ color: historyNode.confidence >= 75 ? "var(--green)" : "var(--gold)" }}>{historyNode.confidence}%</span> | 
+               Entry: {historyNode.entry ? fmtPrice(historyNode.entry) : "—"} | 
+               SL: {historyNode.sl ? fmtPrice(historyNode.sl) : "—"} | 
+               TP: {historyNode.tp1 ? fmtPrice(historyNode.tp1) : "—"}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="glass p-4 border border-blue-500/20" style={{ background: "rgba(0,0,255,0.03)" }}>
+              <div className="font-bold mb-2 flex items-center gap-2" style={{ color: "var(--blue)" }}>
+                <span>👁️ V1: Chart SMC</span>
+              </div>
+              <div className="text-xs leading-relaxed" style={{ color: "var(--text-dim)", whiteSpace: "pre-wrap" }}>
+                {historyNode.v1_smc || "Không có dữ liệu V1"}
+              </div>
+            </div>
+
+            <div className="glass p-4 border border-purple-500/20" style={{ background: "rgba(128,0,128,0.03)" }}>
+              <div className="font-bold mb-2 flex items-center gap-2" style={{ color: "#a855f7" }}>
+                <span>⛓️ V2: On-Chain Flow</span>
+              </div>
+              <div className="text-xs leading-relaxed" style={{ color: "var(--text-dim)", whiteSpace: "pre-wrap" }}>
+                {historyNode.v2_macro || "Không có dữ liệu V2"}
+              </div>
+            </div>
+
+            <div className="glass p-4 border border-red-500/20" style={{ background: "rgba(255,0,0,0.03)" }}>
+              <div className="font-bold mb-2 flex items-center gap-2" style={{ color: "var(--red)" }}>
+                <span>⚖️ V3: Risk Desk (Phán quyết)</span>
+              </div>
+              <div className="text-xs leading-relaxed" style={{ color: "var(--text-dim)", whiteSpace: "pre-wrap" }}>
+                <span className="font-bold text-gray-300">Kết luận:</span> {historyNode.summary || "Đang xử lý..."}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
